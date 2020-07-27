@@ -1,0 +1,6 @@
+__history
+__recovery
+Win64
+*.stat
+*.local
+*cache
