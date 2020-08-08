@@ -4,7 +4,7 @@ uses
   Vcl.Forms,
   Main in 'Main.pas' {SteamSwitcherMainForm},
   AddUser in 'AddUser.pas' {AddUserForm},
-  Functions in 'Functions.pas';
+  SSFunc in 'SSFunc.pas';
 
 {$R *.res}
 
