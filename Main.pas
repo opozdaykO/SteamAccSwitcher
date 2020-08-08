@@ -35,6 +35,7 @@ implementation
 procedure TSteamSwitcherMainForm.AddUserBTNClick(Sender: TObject);
 var
   NewUser: TUser;
+  i: byte;
 begin
   AddUserForm.ShowModal;
   if AddUserForm.AddAliasEdit.Text <> '' then
@@ -45,8 +46,13 @@ begin
         NewUser.Login := AddUserForm.AddLoginEdit.Text;
         NewUser.Password := AddUserForm.AddPasswordEdit.Text;
         SS.AddUser(NewUser);
-        SS.CurrentUser := SS.UserCount;
-        UsersList.Items.Add(SS.User.Alias);
+        UsersList.Clear;
+        if SS.UserCount > 0 then
+          for i := 0 to SS.UserCount - 1 do
+          begin
+            SS.CurrentUser := i;
+            UsersList.Items.Add(SS.User.Alias);
+          end;
       end
       else
         MessageBox(Handle, 'Password string is empty!', 'Error!',
