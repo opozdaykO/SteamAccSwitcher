@@ -86,6 +86,7 @@ begin
   UsersList.ItemIndex := -1;
 end;
 
+
 procedure TSteamSwitcherMainForm.FormCreate(Sender: TObject);
 var
   i: byte;

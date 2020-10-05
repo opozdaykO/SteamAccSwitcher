@@ -1,10 +1,13 @@
 object SteamSwitcherMainForm: TSteamSwitcherMainForm
   Left = 0
   Top = 0
+  AlphaBlend = True
+  AlphaBlendValue = 200
+  AutoSize = True
   BorderStyle = bsSizeToolWin
-  Caption = 'SteamSwitcherMainForm'
-  ClientHeight = 291
-  ClientWidth = 308
+  Caption = 'Steam Switcher'
+  ClientHeight = 275
+  ClientWidth = 292
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -12,21 +15,24 @@ object SteamSwitcherMainForm: TSteamSwitcherMainForm
   Font.Name = 'Tahoma'
   Font.Style = []
   OldCreateOrder = False
+  Position = poDefault
+  Scaled = False
+  ShowHint = True
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   PixelsPerInch = 96
   TextHeight = 13
   object UsersList: TListBox
-    Left = 8
-    Top = 8
+    Left = 0
+    Top = 0
     Width = 292
     Height = 244
     ItemHeight = 13
     TabOrder = 0
   end
   object SwitchBTN: TButton
-    Left = 8
-    Top = 258
+    Left = 0
+    Top = 250
     Width = 230
     Height = 25
     Caption = 'Switch account'
@@ -34,8 +40,8 @@ object SteamSwitcherMainForm: TSteamSwitcherMainForm
     OnClick = SwitchBTNClick
   end
   object AddUserBTN: TButton
-    Left = 244
-    Top = 258
+    Left = 236
+    Top = 250
     Width = 25
     Height = 25
     Caption = '+'
@@ -43,8 +49,8 @@ object SteamSwitcherMainForm: TSteamSwitcherMainForm
     OnClick = AddUserBTNClick
   end
   object DeleteUserBTN: TButton
-    Left = 275
-    Top = 258
+    Left = 267
+    Top = 250
     Width = 25
     Height = 25
     Caption = '-'
