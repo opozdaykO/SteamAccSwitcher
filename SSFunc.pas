@@ -1,10 +1,19 @@
 unit SSFunc;
 
+{
+  TODO:
+  1)Написать второй тип авторизации через отправку нажатий в окно стима вместо того,
+  чтоб отправлять через параметры коммандной строки
+  2)Добавить в основной проект поддерку командной строки
+  3)Заменить ShellExecute на прямой вызов
+  4)добавить шифрование
+}
 interface
 
 uses
-  Winapi.Windows, Winapi.PsAPI, Winapi.TlHelp32, System.SysUtils, Registry,
-  INIFiles, ShellApi, DateUtils, Forms;
+  Winapi.Windows, Winapi.PsAPI, Winapi.TlHelp32, System.SysUtils,
+  System.Win.Registry,
+  System.INIFiles, Winapi.ShellApi, System.DateUtils, Vcl.Forms;
 
 type
   TUser = record
@@ -13,7 +22,7 @@ type
 
   TSteam = record
     Exe, AdParam, LoginParam, PasswordParam, ShutdownParam: string;
-    UsersCount: byte;
+    UsersCount, AuthType: byte;
     ShutdownTimeout: Int64;
     CloseAfterSwitch: boolean;
     Users: array [0 .. 255] of TUser;
@@ -21,47 +30,53 @@ type
 
   TSteamSwitcher = class(TObject)
   private
-    procedure wait(time: Int64); 
-    function FExeActive: boolean; 
-    function GetPathFromPID(const PID: cardinal): string; 
-    function GetPid(ExeName: string): cardinal; 
-    function GetExePath: string; 
-    function FReadCAS: boolean; 
+    function FReadNAT: byte;
+    procedure FWriteNAT(Value: byte);
+    procedure Wait(time: Int64);
+    function FExeActive: boolean;
+    function GetPathFromPID(const PID: cardinal): string;
+    function GetPid(ExeName: string): cardinal;
+    function GetExePath: string;
+    function FReadCAS: boolean;
     procedure FWriteCAS(Value: boolean);
-    function FReadUC: byte; 
-    function FReadPath: string; 
+    function FReadUC: byte;
+    function FReadPath: string;
     procedure FWritePath(Value: string);
-    function FReadST: Int64; 
-    procedure FWriteST(Value: Int64); 
-    function FReadCU: integer; 
-    procedure FWriteCU(Value: integer); 
-    function FReadU: TUser; 
-    procedure FWriteU(Value: TUser); 
-    function FReadAP: string; 
-    procedure FWriteAP(Value: string); 
-    function FReadLP: string; 
-    procedure FWriteLP(Value: string); 
-    function FReadPP: string; 
-    procedure FWritePP(Value: string); 
-    function FReadSP: string; 
-    procedure FWriteSP(Value: string); 
+    function FReadST: Int64;
+    procedure FWriteST(Value: Int64);
+    function FReadCU: integer;
+    procedure FWriteCU(Value: integer);
+    function FReadU: TUser;
+    procedure FWriteU(Value: TUser);
+    function FReadAP: string;
+    procedure FWriteAP(Value: string);
+    function FReadLP: string;
+    procedure FWriteLP(Value: string);
+    function FReadPP: string;
+    procedure FWritePP(Value: string);
+    function FReadSP: string;
+    procedure FWriteSP(Value: string);
+    procedure SwitchAuthTypeFirst(UserNumber: byte);
+    procedure SwitchAuthTypeSecond(UserNumber: byte);
+    procedure TerminateSteamEXE;
   public
-    constructor Create(PathToConfigFile: string); 
-    destructor Destroy; override; 
-    property UserCount: byte read FReadUC; 
-    property CurrentUser: integer read FReadCU write FWriteCU; 
-    property User: TUser read FReadU write FWriteU; 
-    procedure Switch(UserNumber: byte); 
-    procedure AddUser(NewUser: TUser); 
-    procedure DeleteUser(UserNumber: byte); 
-    property ExePath: string read FReadPath write FWritePath; 
-    property ExeActive: boolean read FExeActive; 
-    property ShutdownTimeout: Int64 read FReadST write FWriteST; 
-    property CloseAfterSwitch: boolean read FReadCAS write FWriteCAS; 
-    property AdParam: string read FReadAP write FWriteAP; 
-    property LoginParam: string read FReadLP write FWriteLP; 
-    property PasswordParam: string read FReadPP write FWritePP; 
-    property ShutdownParam: string read FReadSP write FWriteSP; 
+    constructor Create(PathToConfigFile: string);
+    destructor Destroy; override;
+    property UserCount: byte read FReadUC;
+    property CurrentUser: integer read FReadCU write FWriteCU;
+    property User: TUser read FReadU write FWriteU;
+    procedure Switch(UserNumber: byte);
+    procedure AddUser(NewUser: TUser);
+    procedure DeleteUser(UserNumber: byte);
+    property ExePath: string read FReadPath write FWritePath;
+    property ExeActive: boolean read FExeActive;
+    property ShutdownTimeout: Int64 read FReadST write FWriteST;
+    property CloseAfterSwitch: boolean read FReadCAS write FWriteCAS;
+    property AdParam: string read FReadAP write FWriteAP;
+    property LoginParam: string read FReadLP write FWriteLP;
+    property PasswordParam: string read FReadPP write FWritePP;
+    property ShutdownParam: string read FReadSP write FWriteSP;
+    property AuthType: byte read FReadNAT write FWriteNAT;
   end;
 
 implementation
@@ -95,6 +110,7 @@ begin
     ShutdownTimeout := INIFile.ReadInteger('Base', 'ShutdownTimeout', 5);
     CloseAfterSwitch := INIFile.ReadBool('Base', 'CloseAfterSwitch', true);
     UsersCount := INIFile.ReadInteger('Base', 'UsersCount', 0);
+    AuthType := INIFile.ReadInteger('Base', 'AuthType', 0);
     if UsersCount > 0 then
       for i := 0 to UsersCount - 1 do
       begin
@@ -130,6 +146,7 @@ begin
     INIFile.WriteInteger('Base', 'ShutdownTimeout', ShutdownTimeout);
     INIFile.WriteBool('Base', 'CloseAfterSwitch', CloseAfterSwitch);
     INIFile.WriteInteger('Base', 'UsersCount', UsersCount);
+    INIFile.WriteInteger('Base', 'AuthType', AuthType);
     for i := 0 to 255 do
       INIFile.EraseSection('User' + IntToStr(i));
     if UsersCount > 0 then
@@ -174,6 +191,11 @@ end;
 function TSteamSwitcher.FReadLP: string;
 begin
   result := Settings.LoginParam;
+end;
+
+function TSteamSwitcher.FReadNAT: byte;
+begin
+  result := Settings.AuthType;
 end;
 
 function TSteamSwitcher.FReadPath: string;
@@ -227,6 +249,11 @@ begin
   Settings.LoginParam := Value;
 end;
 
+procedure TSteamSwitcher.FWriteNAT(Value: byte);
+begin
+  Settings.AuthType := Value;
+end;
+
 procedure TSteamSwitcher.FWritePath(Value: string);
 begin
   Settings.Exe := Value;
@@ -257,7 +284,7 @@ function TSteamSwitcher.GetExePath: string;
 var
   Reg: TRegistry;
 begin
-  Reg.Create;
+  Reg := TRegistry.Create;
   Reg.RootKey := HKEY_CURRENT_USER;
   Reg.OpenKey('SOFTWARE\Valve\Steam', false);
   if Reg.KeyExists('SteamExe') then
@@ -330,18 +357,30 @@ end;
 
 procedure TSteamSwitcher.Switch(UserNumber: byte);
 begin
+  case Settings.AuthType of
+    0:
+      SwitchAuthTypeFirst(UserNumber);
+    1:
+      SwitchAuthTypeSecond(UserNumber);
+  else
+    MessageBox(0, 'Error! Wrong auth type!', 'Error!', MB_OK or MB_ICONERROR)
+  end;
+end;
+
+procedure TSteamSwitcher.SwitchAuthTypeFirst(UserNumber: byte);
+begin
   if FExeActive then
   begin
     ShellExecute(0, 'open', PWideChar(Settings.Exe),
       PWideChar(Settings.ShutdownParam), PWideChar(ExtractFilePath(Settings.Exe)
       ), SW_SHOWDEFAULT);
-    wait(Settings.ShutdownTimeout);
+    Wait(Settings.ShutdownTimeout);
     if FExeActive then
     begin
       ShellExecute(0, 'open', 'taskkill',
         PWideChar('/F /IM ' + ExtractFileName(Settings.Exe)), '',
         SW_SHOWDEFAULT);
-      wait(Settings.ShutdownTimeout);
+      Wait(Settings.ShutdownTimeout);
       if not FExeActive then
         ShellExecute(0, 'open', PWideChar(Settings.Exe),
           PWideChar(Settings.AdParam + ' ' + Settings.LoginParam + ' ' +
@@ -364,7 +403,22 @@ begin
       PWideChar(ExtractFilePath(Settings.Exe)), SW_SHOWDEFAULT);
 end;
 
-procedure TSteamSwitcher.wait(time: Int64);
+procedure TSteamSwitcher.SwitchAuthTypeSecond(UserNumber: byte);
+begin
+  if FExeActive then
+  begin
+
+  end;
+end;
+
+procedure TSteamSwitcher.TerminateSteamEXE;
+var
+  PID: cardinal;
+begin
+
+end;
+
+procedure TSteamSwitcher.Wait(time: Int64);
 var
   Timeout: TDateTime;
 begin
